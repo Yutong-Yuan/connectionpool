@@ -41,15 +41,18 @@ MYSQL_RES * Connection::query(std::string sql)
 
 
 //～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～数据库连接池类方法实现～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～～
+//先给所有变量一个默认值（可以在start中再次设置，也可以直接不管start中的值）
 ConnectionPool::ConnectionPool():
     host_(_host),
     port_(_port),
     user_(_user),
     passwd_(_passwd),
     database_(_database),
+    connectionInitNum_(_connectionInitNum),
+    connectionMaxNum_(_connectionMaxNum),
     maxIdleTime_(_maxIdleTime),
-    connectionTimeout_(_connectionTimeout),
-    connectionCurNum_(0){}
+    connectionTimeout_(_connectionTimeout)
+    {}
 
 ConnectionPool::~ConnectionPool()
 {
@@ -57,12 +60,25 @@ ConnectionPool::~ConnectionPool()
 }
 
 //开启数据库连接池
-void ConnectionPool::start(const int &connectionInitNum,const int &connectionMaxNum)
+void ConnectionPool::start(
+    const std::string host, int port ,const std::string user, const std::string passwd, std::string database,
+    const int &connectionInitNum,const int &connectionMaxNum,
+    const int &maxIdleTime,const int &connectionTimeout)
 {
+    //对所有的变量赋初值
+    host_=host;
+    port_=port;
+    user_=user;
+    passwd_=passwd;
+    database=database;
     connectionInitNum_=connectionInitNum;
     connectionMaxNum_=connectionMaxNum;
+    maxIdleTime_=maxIdleTime;
+    connectionTimeout_=connectionTimeout;
+    connectionCurNum_=0;
     isPoolExit_=false;
     exitFlags_=0;
+
     for(int i=0;i<connectionInitNum_;i++)
     {
         Connection *conn=new Connection();
@@ -81,6 +97,7 @@ void ConnectionPool::start(const int &connectionInitNum,const int &connectionMax
     th1.detach();
     std::thread th2(&ConnectionPool::scannerConnectionFunc,this);
     th2.detach();
+    std::cout<<"start connectionpool ok\n";
 }
 
 //主动关闭数据库连接池
@@ -94,7 +111,7 @@ void ConnectionPool::stop()
         {
             isPoolExit_=true;
             std::unique_lock<std::mutex> ulock(connectionQueMux_);
-            //通知生产线程和监控线程，告诉他们可以自行退出了，如果当他们退出，则整个进程阻塞不能退出
+            //通知生产线程和监控线程，告诉他们可以自行退出了，如果他们不退出，则整个进程阻塞不能退出（因为定义的thread是局部变量具体可以看报告）
             EmptyCv_.notify_all();
             notFreeCv_.notify_all();
         }
@@ -152,6 +169,7 @@ void ConnectionPool::produceConnectionFunc()
             conn->connect(host_,port_,user_,passwd_,database_);
             connectionQue_.push(conn);
             connectionCurNum_++;
+            std::cout<<"produce connection"<<std::endl;
             //生产完一个连接之后通知消费者
             notEmptyCv_.notify_all();
         }
@@ -193,15 +211,20 @@ void ConnectionPool::scannerConnectionFunc()
     {
         {
             std::unique_lock<std::mutex> ulock(connectionQueMux_);
-            if(notFreeCv_.wait_for(ulock,std::chrono::milliseconds(_maxIdleTime),[&]()->bool{return isPoolExit_;})==false)
+            //若超过太长时间没有新的连接请求，且现在空闲的连接大于初始连接值则回收连接资源
+            if(notFreeCv_.wait_for(ulock,std::chrono::milliseconds(_maxIdleTime))==std::cv_status::timeout)
             {
-                std::unique_lock<std::mutex> ulock(connectionQueMux_);
+                //当连接池关闭时退出线程
+                if(isPoolExit_)     return;
+                //注意 千万不要加下面的代码 否则会死锁 因为wait_for返回值是cv_status::timeout是超时唤醒，唤醒之后也会持有锁，不需要再次申请锁
+                //std::unique_lock<std::mutex> ulock(connectionQueMux_);
                 for(int i=0;i<connectionQue_.size()-connectionInitNum_;i++)
                 {
                     Connection *p=connectionQue_.front();
                     delete p;
                     connectionQue_.pop();
                     connectionCurNum_--;
+                    std::cout<<"delete "<<i<<std::endl;
                 }
             }
             //当连接池关闭时退出线程

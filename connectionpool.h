@@ -9,7 +9,7 @@
 #include <condition_variable>
 #include <memory>
 #include <functional>
-
+#include <mysql.h>
 
 //用户可选的设置参数
 //连接的主机IP
@@ -25,7 +25,7 @@ const std::string _database="test";
 //连接池的初始连接量
 const int _connectionInitNum=10; 
 //连接池的最大连接量
-const int _connectionMaxNum=1024; 
+const int _connectionMaxNum=512; 
 //连接池最大空闲时间(ms)
 const int _maxIdleTime=60000; 
 //连接池获取连接的超时时间(ms)
@@ -58,7 +58,10 @@ public:
     //对外公开从连接池中获取一个可用的空闲连接的接口
 	std::shared_ptr<Connection> getConnection();
     //开启数据库连接池
-    void start(const int &connectionInitNum=_connectionInitNum,const int &connectionMaxNum=_connectionMaxNum);
+    void start(
+        const std::string host=_host, int port=_port ,const std::string user=_user, const std::string passwd=_passwd, std::string database=_database,
+        const int &connectionInitNum=_connectionInitNum,const int &connectionMaxNum=_connectionMaxNum,
+        const int &maxIdleTime=_maxIdleTime,const int &connectionTimeout=_connectionTimeout);
     //主动关闭数据库连接池
     void stop();
     //数据库连接池析构函数
@@ -104,6 +107,7 @@ private:
     //当前连接队列为空条件变量
     std::condition_variable notEmptyCv_;
     //设置连接池不空闲的条件变量
+    public:
     std::condition_variable notFreeCv_;
 
     //设置线程池关闭的表示（不然会死锁）
