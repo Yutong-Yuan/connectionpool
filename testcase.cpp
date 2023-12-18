@@ -58,11 +58,11 @@ void func(shared_ptr<ConnectionPool> connectionpool,FILE *fp)
             //Connection *conn=new Connection();
             unique_ptr<Connection> conn(new Connection());
             //输入自己的连接属性
-            while (conn->connect("127.0.0.1",3306,"yyt","yyt","test")!=false)
+            while (conn->connect("127.0.0.1",3306,"yyt","yyt","test")!=false)    //(3)
             {
                 this_thread::sleep_for(10ms);
             }
-            MYSQL_RES *res=conn->query("select * from account;");
+            MYSQL_RES *res=conn->query("select * from account;");                //(4)
             if(res!=nullptr)
             {
                 int num_fields=mysql_num_fields(res);
@@ -99,11 +99,11 @@ int main(int argc,char **argv)
     FILE *fp=fopen("./log","w");
     //当flags为0的时候才应用数据库连接池 不为零的时候不启用（起到对比实验的作用）
     if(argc>1)  flags=atoi(argv[1]);
-    shared_ptr<ConnectionPool> connectionpool=ConnectionPool::getConnectpoolInstance();
+    shared_ptr<ConnectionPool> connectionpool=ConnectionPool::getConnectpoolInstance();     //(1)
     if(flags==0)
     {
         //利用start方法来设置数据库连接池的属性（或者直接修改connectionpool.h来用文档的形式修改，这样就不用在start中给属性）
-        connectionpool->start("127.0.0.1",3306,"yyt","yyt","test",5,1024,60000,1000);
+        connectionpool->start("127.0.0.1",3306,"yyt","yyt","test",5,1024,60000,1000);        //(2)
     }
     thread th1(&func,connectionpool,fp);
     th1.detach();
