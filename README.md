@@ -7,7 +7,7 @@ c++11 数据库连接池
 （1）编译：g++ testcase.cpp connectionpool.cpp -o testcase -I/usr/include/mysql/ -lmysqlclient  
 （2）./testcase 0（运行利用数据库连接池来连接访问数据库） or ./testcase 1（没有利用数据库连接处来连接访问数据库，可用做对比实验）  
   
-ps：具体数据库连接池访问的步骤请参考testcase.cpp中的步骤（1）-（4），且由于环境不同，若需动态库则自行编译  
+ps：具体数据库连接池访问的步骤请参考testcase.cpp中的步骤(1)-(4)，且由于环境不同，若需动态库则自行编译  
   
 本机对比结果（效果显著）：
 <img width="1347" alt="image" src="https://github.com/Yutong-Yuan/connectionpool/assets/67001644/cfd1da20-6264-426e-9051-83468c932bae">
