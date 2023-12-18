@@ -4,6 +4,7 @@ c++11 数据库连接池
 环境：Ubuntu 22.04.3 g++ 11.4.0（请确保g++版本在4.8.5之上，支持c++11） 库环境中要包含mysql-client库
 
 测试案例：
+
 （1）编译：g++ testcase.cpp connectionpool.cpp -o testcase -I/usr/include/mysql/ -lmysqlclient
 （2）./testcase 0（运行利用数据库连接池来连接访问数据库） or ./testcase 1（没有利用数据库连接处来连接访问数据库，可用做对比实验）
 
